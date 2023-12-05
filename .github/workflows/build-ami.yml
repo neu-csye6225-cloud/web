@@ -76,7 +76,6 @@ jobs:
       run: packer build ami.us-east-1.pkr.hcl
 
     - name: Retrieve Latest AMI ID
-      working-directory: ./ami
       run: |
         latest_ami=$(jq -r '.builds[-1].artifact_id' manifest.json | cut -d ":" -f2)
         echo "AMI_ID=$AMI_ID" >> $GITHUB_ENV

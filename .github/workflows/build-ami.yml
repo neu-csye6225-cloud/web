@@ -1,0 +1,110 @@
+name: Build CI
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build CI
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v2
+      with:
+        node-version: 18
+
+    - name: Display .env file
+      run: |
+        touch .env
+        echo "MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }}" >> .env
+        echo "MYSQL_USER=${{ secrets.MYSQL_USER }}" >> .env
+        echo "MYSQL_PASSWORD=${{ secrets.MYSQL_PASSWORD }}" >> .env
+        echo "MYSQL_HOST=${{ secrets.MYSQL_HOST }}" >> .env
+        echo "DB_DIALECT=${{ secrets.DB_DIALECT }}" >> .env
+        cat .env
+
+    - name: configuremysql
+      run: |
+        sudo apt-get update
+        sudo systemctl start mysql
+        sudo systemctl status mysql
+        mysql -u ${{ secrets.MYSQL_USER }} -p"${{ secrets.MYSQL_PASSWORD }}"
+
+    - name: install the dependencies
+      run: npm install
+
+    - name: run the integration
+      run: |
+        npm test
+
+    - name: Zip webapp contents
+      run: |
+        zip -r webapp.zip ./
+
+    - name: list files
+      run: |
+        ls -a
+        current_directory=$(pwd)
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: v18.17.1
+
+    - name: Set up Packer
+      run: |
+        wget https://releases.hashicorp.com/packer/1.7.3/packer_1.7.3_linux_amd64.zip
+        unzip packer_1.7.3_linux_amd64.zip
+        chmod +x packer
+        sudo mv packer /usr/local/bin/
+      shell: bash
+
+    - name: Initialize Packer
+      run: packer init .
+#try
+    - name: Build AMI
+      env:
+        AWS_REGION : ${{ secrets.AWS_REGION }}
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_KEY }}
+      run: packer build ami.us-east-1.pkr.hcl
+
+    - name: Retrieve Latest AMI ID
+      working-directory: ./ami
+      run: |
+        latest_ami=$(jq -r '.builds[-1].artifact_id' manifest.json | cut -d ":" -f2)
+        echo "AMI_ID=$AMI_ID" >> $GITHUB_ENV
+
+    - name: Create new Launch Template version
+      run: |
+        aws ec2 create-launch-template-version --launch-template-id ${{ secrets.LAUNCH_TEMPLATE_ID }} --source-version '$Latest' --launch-template-data "ImageId=$latest_ami"
+
+    - name: Update ASG to use latest Launch Template version 
+      run: |
+        aws autoscaling update-auto-scaling-group --auto-scaling-group-name ${{ secrets.ASG_NAME }} --launch-template LaunchTemplateId=${{ secrets.LAUNCH_TEMPLATE_ID }},Version='$Latest'
+      
+    - name: Start ASG instance refresh
+      run: |
+        instance_refresh_id=$(aws autoscaling start-instance-refresh --auto-scaling-group-name ${{ secrets.ASG_NAME }} --query 'InstanceRefreshId' --output text)
+
+    - name: Wait for instance refresh to complete
+      run: |
+        status="IN_PROGRESS"
+        while [ "$status" == "IN_PROGRESS" ]; do
+          status=$(aws autoscaling describe-instance-refreshes --instance-refresh-ids $instance_refresh_id --query 'InstanceRefreshes[].Status' --output text)
+          sleep 15
+        done
+          
+    - name: Check final instance refresh status  
+      run: |
+        final_status=$(aws autoscaling describe-instance-refreshes --instance-refresh-ids $instance_refresh_id --query 'InstanceRefreshes[].Status' --output text)
+        if [ "$final_status" != "Successful" ]; then
+          echo "Instance refresh failed with status $final_status"
+          exit 1
+        fi

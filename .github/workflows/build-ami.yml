@@ -95,6 +95,7 @@ jobs:
 
     - name: Create new Launch Template version
       run: |
+        latest_ami=$(jq -r '.builds[-1].artifact_id' manifest.json | cut -d ":" -f2)
         aws ec2 create-launch-template-version \
             --launch-template-name ${{ secrets.TEMPLATE_NAME }} \
             --region ${{ secrets.AWS_REGION }} \

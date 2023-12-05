@@ -78,12 +78,15 @@ jobs:
     - name: Retrieve Latest AMI ID
       run: |
         latest_ami=$(jq -r '.builds[-1].artifact_id' manifest.json | cut -d ":" -f2)
-        echo "AMI_ID=$AMI_ID" >> $GITHUB_ENV
 
     - name: Create new Launch Template version
       run: |
-        aws ec2 create-launch-template-version --launch-template-id ${{ secrets.LAUNCH_TEMPLATE_ID }} --source-version '$Latest' --launch-template-data "ImageId=$latest_ami"
-
+       aws ec2 create-launch-template-version \
+            --launch-template-name ${{ secrets.TEMPLATE_NAME }} \
+            --region ${{ secrets.AWS_REGION }} \
+            --source-version 1 \
+            --launch-template-data '{"ImageId": "$latest_ami"}'
+       
     - name: Update ASG to use latest Launch Template version 
       run: |
         aws autoscaling update-auto-scaling-group --auto-scaling-group-name ${{ secrets.ASG_NAME }} --launch-template LaunchTemplateId=${{ secrets.LAUNCH_TEMPLATE_ID }},Version='$Latest'

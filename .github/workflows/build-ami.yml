@@ -74,23 +74,17 @@ jobs:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_KEY }}
       run: packer build ami.us-east-1.pkr.hcl
-
-    - name: Configure AWS credentials
-      env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        AWS_REGION : ${{ secrets.AWS_REGION }}
-      run: |
-          aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
-          aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
-          aws configure set default.region $AWS_REGION
-
+      
     - name: Retrieve Latest AMI ID
       run: |
         latest_ami=$(jq -r '.builds[-1].artifact_id' manifest.json | cut -d ":" -f2)
         echo "latest ami is $latest_ami"
 
     - name: Create new Launch Template version
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_REGION : ${{ secrets.AWS_REGION }}
       run: |
        aws ec2 create-launch-template-version \
             --launch-template-name ${{ secrets.TEMPLATE_NAME }} \
@@ -99,14 +93,26 @@ jobs:
             --launch-template-data '{"ImageId": "$latest_ami"}'
       
     - name: Update ASG to use latest Launch Template version 
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_REGION : ${{ secrets.AWS_REGION }}
       run: |
         aws autoscaling update-auto-scaling-group --auto-scaling-group-name ${{ secrets.ASG_NAME }} --launch-template LaunchTemplateId=${{ secrets.LAUNCH_TEMPLATE_ID }},Version='$Latest'
       
     - name: Start ASG instance refresh
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_REGION : ${{ secrets.AWS_REGION }}
       run: |
         instance_refresh_id=$(aws autoscaling start-instance-refresh --auto-scaling-group-name ${{ secrets.ASG_NAME }} --query 'InstanceRefreshId' --output text)
 
     - name: Wait for instance refresh to complete
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_REGION : ${{ secrets.AWS_REGION }}
       run: |
         status="IN_PROGRESS"
         while [ "$status" == "IN_PROGRESS" ]; do
@@ -115,6 +121,10 @@ jobs:
         done
           
     - name: Check final instance refresh status  
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        AWS_REGION : ${{ secrets.AWS_REGION }}
       run: |
         final_status=$(aws autoscaling describe-instance-refreshes --instance-refresh-ids $instance_refresh_id --query 'InstanceRefreshes[].Status' --output text)
         if [ "$final_status" != "Successful" ]; then

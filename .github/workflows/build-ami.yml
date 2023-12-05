@@ -81,14 +81,12 @@ jobs:
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_KEY }}
       run: |
         mkdir -p ~/.aws
-        run: |
-          mkdir -p ~/.aws
-          cat <<EOF > ~/.aws/credentials
-          [default]
-          aws_access_key_id = $AWS_ACCESS_KEY_ID
-          aws_secret_access_key = $AWS_SECRET_ACCESS_KEY
-          EOF
-          aws configure set default.region <YOUR_REGION>
+        cat <<EOF > ~/.aws/credentials
+        [default]
+        aws_access_key_id = $AWS_ACCESS_KEY_ID
+        aws_secret_access_key = $AWS_SECRET_ACCESS_KEY
+        EOF
+        aws configure set default.region ${{ secrets.AWS_REGION }}
         
     - name: Retrieve Latest AMI ID
       run: |

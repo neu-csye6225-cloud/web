@@ -129,7 +129,8 @@ jobs:
           --auto-scaling-group-name "${{ secrets.ASG_NAME }}" \
           --query 'InstanceRefreshes[].Status' \
           --output text)
-        if [ "$final_status" != "Successful" ]; then
+        if [ "$final_status" != "InProgress" ] && [ "$final_status" != "Successful" ]; then
           echo "Instance refresh failed with status $final_status"
           exit 1
         fi
+

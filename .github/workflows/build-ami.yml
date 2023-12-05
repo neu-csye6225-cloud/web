@@ -76,6 +76,11 @@ jobs:
       run: packer build ami.us-east-1.pkr.hcl
            echo "current working directory = $pwd"
 
+    - name: list files
+      run: |
+        ls -a
+        current_directory=$(pwd)
+
     - name: Retrieve Latest AMI ID
       run: |
         latest_ami=$(jq -r '.builds[-1].artifact_id' manifest.json | cut -d ":" -f2)

@@ -74,6 +74,15 @@ jobs:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_KEY }}
       run: packer build ami.us-east-1.pkr.hcl
+
+    - name: Configure AWS credentials
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      run: |
+        mkdir -p ~/.aws
+        echo -e "[default]\naws_access_key_id = $AWS_ACCESS_KEY_ID\naws_secret_access_key = $AWS_SECRET_ACCESS_KEY" > ~/.aws/credentials
+        aws configure set default.region ${{ secrets.AWS_REGION }}
       
     - name: Retrieve Latest AMI ID
       run: |
@@ -82,11 +91,11 @@ jobs:
 
     - name: Create new Launch Template version
       env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         AWS_REGION : ${{ secrets.AWS_REGION }}
       run: |
-       aws ec2 create-launch-template-version \
+        aws ec2 create-launch-template-version \
             --launch-template-name ${{ secrets.TEMPLATE_NAME }} \
             --region ${{ secrets.AWS_REGION }} \
             --source-version 1 \
@@ -94,7 +103,7 @@ jobs:
       
     - name: Update ASG to use latest Launch Template version 
       env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         AWS_REGION : ${{ secrets.AWS_REGION }}
       run: |
@@ -109,10 +118,6 @@ jobs:
         instance_refresh_id=$(aws autoscaling start-instance-refresh --auto-scaling-group-name ${{ secrets.ASG_NAME }} --query 'InstanceRefreshId' --output text)
 
     - name: Wait for instance refresh to complete
-      env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        AWS_REGION : ${{ secrets.AWS_REGION }}
       run: |
         status="IN_PROGRESS"
         while [ "$status" == "IN_PROGRESS" ]; do
@@ -121,10 +126,6 @@ jobs:
         done
           
     - name: Check final instance refresh status  
-      env:
-        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-        AWS_REGION : ${{ secrets.AWS_REGION }}
       run: |
         final_status=$(aws autoscaling describe-instance-refreshes --instance-refresh-ids $instance_refresh_id --query 'InstanceRefreshes[].Status' --output text)
         if [ "$final_status" != "Successful" ]; then

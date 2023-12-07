@@ -81,7 +81,9 @@ export const createSubmission = async (assignmentId, submissionUrl) => {
         secretAccessKey: 'xt1yxcubtvMmZrADSg7uhqpYBGJXQHhmwyPHtia8' 
       }
     });
+
     AWS.config.update({ region: 'us-east-1' });
+
     const assignment = await findAssignment(id);
     if (!assignment) {
       throw new Error("Assignment not found");

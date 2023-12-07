@@ -4,6 +4,15 @@ import { getCredentials } from "./auth.js";
 import { User } from "../models/userModel.js";
 import { v4 as uuidv4 } from 'uuid';
 import {Submission} from "../models/submission.js";
+AWS.config.update({
+  credentials: {
+    accessKeyId: 'AKIAWAX7DYRY45RJBJ6D', 
+    secretAccessKey: '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' 
+  }
+});
+AWS.config.update({
+  region:"us-east-1",
+});
 import AWS from 'aws-sdk';
 const sns = new AWS.SNS();
 import dotenv from 'dotenv';
@@ -75,15 +84,7 @@ export const createSubmission = async (assignmentId, submissionUrl) => {
   try {
     const id   = assignmentId;
     const { submission_url } = submissionUrl;
-    AWS.config.update({
-      credentials: {
-        accessKeyId: 'AKIAWAX7DYRY45RJBJ6D', 
-        secretAccessKey: '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' 
-      }
-    });
-
-    AWS.config.update({ region: 'us-east-1' });
-
+   
     const assignment = await findAssignment(id);
     if (!assignment) {
       throw new Error("Assignment not found");
@@ -114,7 +115,7 @@ export const createSubmission = async (assignmentId, submissionUrl) => {
     };
     const params = {
       Message : JSON.stringify(message),
-      TopicArn : process.env.TopicArn
+      TopicArn : process.env.TopicArn//"arn:aws:sns:us-east-1:413925622897:mySnsTopic-7f3ecf1"
     }
     try{
       const publishResponse = await sns.publish(params).promise();
@@ -159,5 +160,3 @@ export const getAttempts = async (id) => {
     throw new Error(error.message);
   }
 };
-
-

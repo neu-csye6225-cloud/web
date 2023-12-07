@@ -121,10 +121,10 @@ jobs:
             --output text)
           sleep 15
         done
-          
-    - name: Check final instance refresh status  
+      
+    - name: Check final instance refresh status
       run: |
-        final_status=$(aws autoscaling describe-instance-refreshes --instance-refresh-ids $instance_refresh_id --query 'InstanceRefreshes[].Status' --output text)
+        final_status=$(aws autoscaling describe-instance-refreshes --instance-refresh-ids $instance_refresh_id --auto-scaling-group-name "${{ secrets.ASG_NAME }}" --query 'InstanceRefreshes[].Status' --output text)
         if [ "$final_status" != "Successful" ]; then
           echo "Instance refresh failed with status $final_status"
           exit 1

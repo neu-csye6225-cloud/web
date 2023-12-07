@@ -76,17 +76,18 @@ export const createSubmission = async (assignmentId, submissionUrl) => {
     const id   = assignmentId;
     const { submission_url } = submissionUrl;
     AWS.config.update({
-      region: 'us-east-1', 
       credentials: {
         accessKeyId: 'AKIAWAX7DYRY45RJBJ6D', 
         secretAccessKey: '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' 
       }
     });
+
+    AWS.config.update({ region: 'us-east-1' });
+
     const assignment = await findAssignment(id);
     if (!assignment) {
       throw new Error("Assignment not found");
     }
-
     const currentDate = new Date();
     if (currentDate > assignment.deadline) {
       throw new Error('Assignment deadline has passed. Submission rejected.');

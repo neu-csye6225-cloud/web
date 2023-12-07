@@ -4,7 +4,6 @@ import { getCredentials } from "./auth.js";
 import { User } from "../models/userModel.js";
 import { v4 as uuidv4 } from 'uuid';
 import {Submission} from "../models/submission.js";
-import {publishMessageToSNS} from "../snsservice.js"
 import AWS from 'aws-sdk';
 const sns = new AWS.SNS();
 import dotenv from 'dotenv';
@@ -76,7 +75,13 @@ export const createSubmission = async (assignmentId, submissionUrl) => {
   try {
     const id   = assignmentId;
     const { submission_url } = submissionUrl;
-
+    AWS.config.update({
+      region: 'us-east-1', 
+      credentials: {
+        accessKeyId: 'AKIAWAX7DYRY45RJBJ6D', 
+        secretAccessKey: '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' 
+      }
+    });
     const assignment = await findAssignment(id);
     if (!assignment) {
       throw new Error("Assignment not found");
@@ -102,13 +107,22 @@ export const createSubmission = async (assignmentId, submissionUrl) => {
       submission_updated: new Date().toISOString(),
     });
     const message = {
+      user:User,
       assignmentId:id,
       submissionUrl:suburl,
+    };
+    const params = {
+      Message : JSON.stringify(message),
+      TopicArn : process.env.TopicArn
     }
-    await publishMessageToSNS(message)
-  .catch(error => {
-    console.error('Error publishing message:', error);
-  });
+    try{
+      const publishResponse = await sns.publish(params).promise();
+      console.log('Message published:', publishResponse.MessageId);
+    }
+    catch(error){
+      throw new Error(error.message)
+    }
+    return submission;
   }
   catch (error) {
     throw new Error(error.message);
